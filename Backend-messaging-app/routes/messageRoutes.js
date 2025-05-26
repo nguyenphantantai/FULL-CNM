@@ -51,4 +51,7 @@ router.post("/messages/forward", validateRequest(["messageId", "conversationId"]
 
 router.get("/unread", getUnreadCount)
 
+// Route xóa tin nhắn theo chuẩn RESTful
+router.delete("/:messageId", deleteUserMessage)
+
 export default router

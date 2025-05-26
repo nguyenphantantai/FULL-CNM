@@ -244,7 +244,22 @@ initializeStorage().catch(console.error)
 
 app.use(helmet())
 app.use(cors())
-app.use(express.json())
+app.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH"].includes(req.method)) {
+    express.json()(req, res, next)
+  } else {
+    next()
+  }
+})
+
+// Middleware bắt lỗi parse JSON
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: "Invalid JSON body" })
+  }
+  next(err)
+})
+
 app.use(express.urlencoded({ extended: true }))
 app.use(morgan("dev"))
 

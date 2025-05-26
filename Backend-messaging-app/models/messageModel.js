@@ -63,6 +63,13 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    reactions: [
+      {
+        emoji: { type: String, required: true },
+        userId: { type: String, required: true, ref: "User" },
+        _id: false
+      },
+    ],
   },
   {
     timestamps: true,

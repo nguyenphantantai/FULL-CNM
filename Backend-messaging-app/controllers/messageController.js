@@ -520,6 +520,12 @@ import {
 
       const receiverId = conversation.participants.find((id) => id !== senderId)
 
+      // Lấy thông tin người gửi
+      const sender = await getUserById(senderId)
+      if (!sender) {
+        return res.status(404).json({ message: "Sender not found" })
+      }
+
       const result = await uploadImage(req.file.buffer, req.file.mimetype, "files")
 
       const attachments = [
@@ -542,8 +548,8 @@ import {
             messageId: message.messageId,
             conversationId: message.conversationId,
             senderId: message.senderId,
-            senderName: sender.fullName,
-            senderAvatar: sender.avatarUrl,
+            senderName: sender.fullName || "Unknown",
+            senderAvatar: sender.avatarUrl || "",
             type: message.type,
             attachments: message.attachments,
             createdAt: message.createdAt,
@@ -724,7 +730,13 @@ import {
       const { messageId } = req.params
       const userId = req.user.userId
 
+      console.log("Delete request:", { messageId, userId });
+
       const deletedMessage = await deleteMessage(messageId, userId)
+      if (!deletedMessage) {
+        console.log("Deleted message is null");
+        return res.status(404).json({ message: "Message not found or cannot delete" })
+      }
 
       res.status(200).json({
         message: "Message deleted successfully",
@@ -733,14 +745,34 @@ import {
           isDeleted: deletedMessage.isDeleted,
         },
       })
-    } catch (error) {
-      console.error("Error in deleteUserMessage:", error)
 
-      if (error.message === "Message not found" || error.message === "You can only delete your own messages") {
+      // Gửi socket event cho cả người gửi và người nhận
+      if (global.io && global.connectedUsers) {
+        const deletedMsg = await getMessageById(messageId)
+        if (deletedMsg) {
+          [deletedMsg.senderId, deletedMsg.receiverId].forEach(userId => {
+            const socketId = global.connectedUsers.get(userId)
+            if (socketId) {
+              global.io.to(socketId).emit("message_deleted", {
+                messageId: deletedMsg.messageId,
+                conversationId: deletedMsg.conversationId,
+              })
+            }
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error in deleteUserMessage:", error, error?.message)
+
+      if (
+        error.message === "Message not found"
+        || error.message === "You can only delete your own messages"
+      ) {
         return res.status(403).json({ message: error.message })
       }
 
-      res.status(500).json({ message: "Server error", error: error.message })
+      // Trả về lỗi rõ ràng hơn
+      res.status(500).json({ message: "Server error", error: error.message || error })
     }
   }
 

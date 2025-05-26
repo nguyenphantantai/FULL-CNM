@@ -289,26 +289,28 @@ const useChat = () => {
 
         const mappedMessages = messagesData
           .map((msg, index) => ({
-            id: msg.messageId || `temp-${Date.now()}-${index}`,
-            sender: msg.senderId === user.id ? "Me" : msg.senderName || "Unknown",
-            content:
-              msg.isRecalled || msg.isDeleted
-                ? "Tin nhắn đã bị thu hồi/xóa"
-                : msg.type === "text" || msg.type === "emoji" || msg.type === "system"
-                  ? msg.content
-                  : msg.attachments?.[0]?.url || msg.content || "", // Ensure content exists
-            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            senderId: msg.senderId,
-            isImage: msg.type === "image" || msg.type === "imageGroup",
-            isVideo: msg.type === "video",
-            isFile: msg.type === "file",
-            isUnsent: msg.isRecalled || msg.isDeleted,
-            isSystemMessage: msg.isSystemMessage || msg.senderId === "system",
-            fileUrl: msg.type === "file" && msg.attachments?.length > 0 ? msg.attachments[0]?.url : null,
-            fileName: msg.type === "file" && msg.attachments?.length > 0 ? msg.attachments[0]?.name : null,
-            fileType: msg.type === "file" && msg.attachments?.length > 0 ? msg.attachments[0]?.type : null,
-            duration: msg.type === "video" && msg.attachments?.length > 0 ? msg.attachments[0]?.duration : null,
-            messageDate: new Date().toLocaleDateString(), // Used for media/files list
+              id: msg.messageId || `temp-${Date.now()}-${index}`,
+              sender: msg.senderId === user.id ? "Me" : msg.senderName || "Unknown",
+              content:
+                msg.isDeleted
+                  ? "Tin nhắn đã bị xóa"
+                  : msg.isRecalled
+                    ? "Tin nhắn đã bị thu hồi/xóa"
+                    : msg.type === "text" || msg.type === "emoji" || msg.type === "system"
+                      ? msg.content
+                      : msg.attachments?.[0]?.url || msg.content || "",
+              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              senderId: msg.senderId,
+              isImage: !msg.isDeleted && (msg.type === "image" || msg.type === "imageGroup"),
+              isVideo: !msg.isDeleted && msg.type === "video",
+              isFile: !msg.isDeleted && msg.type === "file",
+              isUnsent: msg.isRecalled || msg.isDeleted,
+              isSystemMessage: msg.isSystemMessage || msg.senderId === "system",
+              fileUrl: !msg.isDeleted && msg.type === "file" && msg.attachments?.length > 0 ? msg.attachments[0]?.url : null,
+              fileName: !msg.isDeleted && msg.type === "file" && msg.attachments?.length > 0 ? msg.attachments[0]?.name : null,
+              fileType: !msg.isDeleted && msg.type === "file" && msg.attachments?.length > 0 ? msg.attachments[0]?.type : null,
+              duration: !msg.isDeleted && msg.type === "video" && msg.attachments?.length > 0 ? msg.attachments[0]?.duration : null,
+              messageDate: new Date().toLocaleDateString(),
           }))
           .filter((msg) => msg.id) // Filter out messages without an ID
 
@@ -1077,9 +1079,9 @@ const useChat = () => {
 
         try {
           if (selectedContact.type === "group") {
-            await apiCall("delete", `/api/groups/${selectedContact.groupId}/messages/${messageId}`, null, token)
+            await apiCall("delete", `/api/groups/${selectedContact.groupId}/messages/${messageId}`, undefined, token)
           } else {
-            await apiCall("delete", `/api/messages/${messageId}`, null, token)
+            await apiCall("delete", `/api/messages/${messageId}`, undefined, token)
           }
 
           // Confirm deletion in UI
@@ -1412,7 +1414,7 @@ const useChat = () => {
         // Gọi API để xóa bạn bè
         try {
           console.log(`Calling API to remove friend: ${friendId}`)
-          const response = await apiCall("delete", `/api/friends/${friendId}`, null, token)
+          const response = await apiCall("delete", `/api/friends/${friendId}`, undefined, token)
           console.log("Friend removal API response:", response)
 
           showError("Đã xóa bạn bè thành công")
@@ -1551,7 +1553,7 @@ const useChat = () => {
 
       try {
         // Gọi API để rời nhóm
-        const response = await apiCall("delete", `/api/groups/${groupId}/leave`, null, token)
+        const response = await apiCall("delete", `/api/groups/${groupId}/leave`, undefined, token)
         console.log("Leave group API response:", response)
 
         // Cập nhật UI sau khi API thành công
@@ -1729,28 +1731,30 @@ const useChat = () => {
 
     console.log("Is current chat:", isCurrentChat); // Log kết quả kiểm tra isCurrentChat
 
-    const newMessage = {
-      id: data.messageId || data.id,
+      const newMessage = {
+        id: data.messageId || data.id,
       sender: data.senderId === user.id ? "Me" : data.senderName || "Người khác",
-      content:
-        data.isRecalled || data.isDeleted
-          ? "Tin nhắn đã bị thu hồi/xóa"
-          : data.type === "text" || data.type === "emoji" || data.type === "system"
-            ? data.content
-            : data.attachments?.[0]?.url || data.content || "",
-      time: messageTime,
-      senderId: data.senderId,
-      isImage: data.type === "image" || data.type === "imageGroup",
-      isVideo: data.type === "video",
-      isFile: data.type === "file",
+        content:
+          data.isDeleted
+            ? "Tin nhắn đã bị xóa"
+            : data.isRecalled
+              ? "Tin nhắn đã bị thu hồi/xóa"
+              : data.type === "text" || data.type === "emoji" || data.type === "system"
+                ? data.content
+                : data.attachments?.[0]?.url || data.content || "",
+        time: messageTime,
+        senderId: data.senderId,
+        isImage: !data.isDeleted && (data.type === "image" || data.type === "imageGroup"),
+        isVideo: !data.isDeleted && data.type === "video",
+        isFile: !data.isDeleted && data.type === "file",
       isUnsent: data.isRecalled || data.isDeleted,
-      isSystemMessage: data.isSystemMessage || data.senderId === "system",
-      fileUrl: data.type === "file" ? data.attachments?.[0]?.url : null,
-      fileName: data.type === "file" ? data.attachments?.[0]?.name : null,
-      fileType: data.type === "file" ? data.attachments?.[0]?.type : null,
-      duration: data.type === "video" ? data.attachments?.[0]?.duration || data.duration : null,
-      messageDate: messageDate,
-    }
+        isSystemMessage: data.isSystemMessage || data.senderId === "system",
+        fileUrl: !data.isDeleted && data.type === "file" ? data.attachments?.[0]?.url : null,
+        fileName: !data.isDeleted && data.type === "file" ? data.attachments?.[0]?.name : null,
+        fileType: !data.isDeleted && data.type === "file" ? data.attachments?.[0]?.type : null,
+        duration: !data.isDeleted && data.type === "video" ? data.attachments?.[0]?.duration || data.duration : null,
+        messageDate: messageDate,
+      }
 
     // LUÔN LUÔN lưu vào cache theo conversationId, kể cả khi không phải chat đang mở
     if (data.conversationId) {
@@ -2155,6 +2159,27 @@ const useChat = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, 100);
   }
+
+  // ... existing code ...
+  useEffect(() => {
+    // ... các event khác ...
+    const handleMessageDeleted = (data) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === data.messageId
+            ? { ...msg, content: "Tin nhắn đã bị xóa", isUnsent: true }
+            : msg
+        )
+      )
+    }
+    socket.on("message_deleted", handleMessageDeleted)
+    // ... cleanup ...
+    return () => {
+      socket.off("message_deleted", handleMessageDeleted)
+      // ... cleanup các event khác ...
+    }
+  }, [setMessages])
+  // ... existing code ...
 
   // --- Derived State ---
   const filteredContacts = contacts.filter(
